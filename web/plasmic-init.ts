@@ -1,6 +1,6 @@
 import { initPlasmicLoader } from "@plasmicapp/loader-nextjs/react-server-conditional";
 
-console.log("PLASMIC_PROJECT_ID:", process.env.PLASMIC_PROJECT_ID);
+
 
 export const PLASMIC = initPlasmicLoader({
     projects: [
