@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+:root {
+  /* Brand Colors */
+  --color-primary: #FF4500;
+  /* Dropogram Red */
+  --color-primary-hover: #E03E00;
+  --color-secondary: #2C2C2C;
+  /* Dark Gray for text */
+  --color-accent: #F4F4F4;
+  /* Light Gray for backgrounds */
+
+  /* Base */
+  --background: #ffffff;
+  --foreground: #171717;
+
+  /* Fonts */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+@theme inline {
+  --color-primary: var(--color-primary);
+  --color-primary-hover: var(--color-primary-hover);
+  --color-secondary: var(--color-secondary);
+  --color-accent: var(--color-accent);
+
+  --font-sans: var(--font-sans);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Utilities for "Uber Eats" vibe */
+.card-shadow {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.card-shadow:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
