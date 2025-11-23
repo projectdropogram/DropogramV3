@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { Search, Map as MapIcon, List, Heart } from "lucide-react";
+import { Search, Map as MapIcon, List, Heart, Share2, UserPlus, Check } from "lucide-react";
 import { OrderModal } from "./OrderModal";
 import { CategoryBar } from "./CategoryBar";
 import dynamic from "next/dynamic";
@@ -39,6 +39,7 @@ export function ConsumerFeed() {
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
     const [favorites, setFavorites] = useState<Set<string>>(new Set());
+    const [followedProducers, setFollowedProducers] = useState<Set<string>>(new Set());
     const [session, setSession] = useState<any>(null);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
@@ -53,7 +54,10 @@ export function ConsumerFeed() {
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
             setSession(session);
-            if (session) fetchFavorites(session.user.id);
+            if (session) {
+                fetchFavorites(session.user.id);
+                fetchFollows(session.user.id);
+            }
         });
 
         if ("geolocation" in navigator) {
@@ -65,7 +69,7 @@ export function ConsumerFeed() {
                     });
                 },
                 (error) => {
-                    console.error("Error getting location:", error);
+                    console.warn("Geolocation failed, falling back to default location:", error.message);
                     // Fallback to San Francisco
                     setUserLocation({ lat: 37.7749, lng: -122.4194 });
                 }
@@ -89,6 +93,13 @@ export function ConsumerFeed() {
         }
     };
 
+    const fetchFollows = async (userId: string) => {
+        const { data } = await supabase.from('follows').select('producer_id').eq('follower_id', userId);
+        if (data) {
+            setFollowedProducers(new Set(data.map(f => f.producer_id)));
+        }
+    };
+
     const toggleFavorite = async (productId: string) => {
         if (!session) return alert("Please sign in to save favorites");
 
@@ -101,6 +112,40 @@ export function ConsumerFeed() {
             await supabase.from('favorites').insert({ user_id: session.user.id, product_id: productId });
         }
         setFavorites(newFavorites);
+    };
+
+    const toggleFollow = async (producerId: string) => {
+        if (!session) return alert("Please sign in to follow producers");
+
+        const newFollows = new Set(followedProducers);
+        if (followedProducers.has(producerId)) {
+            newFollows.delete(producerId);
+            await supabase.from('follows').delete().match({ follower_id: session.user.id, producer_id: producerId });
+        } else {
+            newFollows.add(producerId);
+            await supabase.from('follows').insert({ follower_id: session.user.id, producer_id: producerId });
+        }
+        setFollowedProducers(newFollows);
+    };
+
+    const shareDrop = async (product: Product) => {
+        const shareData = {
+            title: `Check out ${product.title} on Dropogram!`,
+            text: `I found this amazing drop: ${product.title} for $${product.price}.`,
+            url: window.location.href // Ideally deep link to product
+        };
+
+        if (navigator.share) {
+            try {
+                await navigator.share(shareData);
+            } catch (err) {
+                console.error("Error sharing:", err);
+            }
+        } else {
+            // Fallback
+            navigator.clipboard.writeText(`${shareData.title} ${shareData.url}`);
+            alert("Link copied to clipboard! 📋");
+        }
     };
 
     const confirmOrder = async () => {
@@ -226,12 +271,18 @@ export function ConsumerFeed() {
                                         No Image
                                     </div>
                                 )}
-                                <div className="absolute top-3 right-3">
+                                <div className="absolute top-3 right-3 flex flex-col gap-2">
                                     <button
                                         onClick={(e) => { e.stopPropagation(); toggleFavorite(product.id); }}
                                         className={`p-2 rounded-full bg-white/90 backdrop-blur-sm shadow-sm transition-transform active:scale-90 ${favorites.has(product.id) ? 'text-red-500' : 'text-gray-400 hover:text-red-500'}`}
                                     >
                                         <Heart className={`h-5 w-5 ${favorites.has(product.id) ? 'fill-current' : ''}`} />
+                                    </button>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); shareDrop(product); }}
+                                        className="p-2 rounded-full bg-white/90 backdrop-blur-sm shadow-sm text-gray-400 hover:text-blue-500 transition-transform active:scale-90"
+                                    >
+                                        <Share2 className="h-5 w-5" />
                                     </button>
                                 </div>
                                 <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg text-xs font-bold text-gray-700 shadow-sm">
@@ -244,6 +295,28 @@ export function ConsumerFeed() {
                                     <span className="text-lg font-bold text-primary">${product.price}</span>
                                 </div>
                                 <p className="text-gray-500 text-sm mb-4 line-clamp-2">{product.description}</p>
+
+                                <div className="flex items-center justify-between mb-4">
+                                    {/* Producer Info & Follow */}
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs text-gray-500">By Producer</span>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); toggleFollow(product.producer_id); }}
+                                            className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full transition-colors ${followedProducers.has(product.producer_id) ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                        >
+                                            {followedProducers.has(product.producer_id) ? (
+                                                <>
+                                                    <Check className="h-3 w-3" /> Following
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <UserPlus className="h-3 w-3" /> Follow
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+
                                 <button
                                     onClick={() => setSelectedProduct(product)}
                                     className="w-full bg-primary text-white font-bold py-3 rounded-lg hover:bg-primary-hover transition-colors active:scale-95 transform"
