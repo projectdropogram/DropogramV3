@@ -13,6 +13,7 @@ const supabase = createClient(
 export function NavBar() {
     const pathname = usePathname();
     const isProducer = pathname?.includes('/producer');
+    const [isAdmin, setIsAdmin] = useState(false);
     const [session, setSession] = useState<any>(null);
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
@@ -30,6 +31,7 @@ export function NavBar() {
                 fetchProfile(session.user.id);
             } else {
                 setAvatarUrl(null);
+                setIsAdmin(false);
             }
         });
 
@@ -37,8 +39,11 @@ export function NavBar() {
     }, []);
 
     const fetchProfile = async (userId: string) => {
-        const { data } = await supabase.from('profiles').select('avatar_url').eq('id', userId).single();
-        if (data) setAvatarUrl(data.avatar_url);
+        const { data } = await supabase.from('profiles').select('avatar_url, is_admin').eq('id', userId).single();
+        if (data) {
+            setAvatarUrl(data.avatar_url);
+            setIsAdmin(data.is_admin || false);
+        }
     };
 
     return (
@@ -68,6 +73,13 @@ export function NavBar() {
 
                         {session ? (
                             <>
+                                {isAdmin && (
+                                    <Link href="/admin">
+                                        <span className="text-sm font-bold text-purple-600 hover:text-purple-800 transition-colors cursor-pointer mr-2">
+                                            Admin
+                                        </span>
+                                    </Link>
+                                )}
                                 <Link href="/orders">
                                     <span className="text-sm font-bold text-gray-500 hover:text-primary transition-colors cursor-pointer mr-2">
                                         Orders
