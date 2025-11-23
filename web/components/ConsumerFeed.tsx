@@ -152,6 +152,15 @@ export function ConsumerFeed() {
         if (!selectedProduct || !session) return;
 
         try {
+            // Check Payment Mode
+            const { data: settings } = await supabase.from('app_settings').select('enable_real_payments').eq('id', 'global').single();
+
+            if (settings?.enable_real_payments) {
+                alert("Real payments are enabled! Stripe integration is coming in the next step. For now, this transaction is blocked for safety.");
+                return;
+            }
+
+            // Simulated Payment Flow
             const { error } = await supabase.from('orders').insert({
                 consumer_id: session.user.id,
                 product_id: selectedProduct.id,
@@ -161,7 +170,7 @@ export function ConsumerFeed() {
             });
 
             if (error) throw error;
-            alert("Order placed successfully! The producer will be notified.");
+            alert("Order placed successfully! (Simulated Payment)");
             setSelectedProduct(null);
         } catch (err: any) {
             console.error("Error placing order:", err);
