@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { NavBar } from "@/components/NavBar";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -10,7 +10,7 @@ const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-export default function LoginPage() {
+function LoginContent() {
     const [email, setEmail] = useState("");
     const [otpCode, setOtpCode] = useState("");
     const [otpSent, setOtpSent] = useState(false);
@@ -19,7 +19,6 @@ export default function LoginPage() {
     const searchParams = useSearchParams();
     const redirectTo = searchParams.get("redirect") || "/consumer";
 
-    // Check if already logged in
     // Check if already logged in
     useEffect(() => {
         const checkSession = async () => {
@@ -149,5 +148,13 @@ export default function LoginPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-white flex items-center justify-center">Loading...</div>}>
+            <LoginContent />
+        </Suspense>
     );
 }
