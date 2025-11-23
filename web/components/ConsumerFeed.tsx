@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import { OrderModal } from './OrderModal';
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -24,6 +25,7 @@ export function ConsumerFeed() {
     const [error, setError] = useState<string | null>(null);
     const [radius, setRadius] = useState(50000); // 50km default
     const [session, setSession] = useState<any>(null);
+    const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
     // Get Session on Mount
     useEffect(() => {
@@ -79,25 +81,29 @@ export function ConsumerFeed() {
         }
     };
 
-    const handleOrder = async (product: Product) => {
+    const handleOrderClick = (product: Product) => {
         if (!session) {
             alert("Please sign in to place an order.");
             return;
         }
+        setSelectedProduct(product);
+    };
 
-        if (!confirm(`Confirm order for ${product.title}? ($${product.price})`)) return;
+    const confirmOrder = async () => {
+        if (!selectedProduct || !session) return;
 
         try {
             const { error } = await supabase.from('orders').insert({
                 consumer_id: session.user.id,
-                product_id: product.id,
-                total_price: product.price,
+                product_id: selectedProduct.id,
+                total_price: selectedProduct.price,
                 quantity: 1,
                 status: 'pending'
             });
 
             if (error) throw error;
             alert("Order placed successfully! The producer will be notified.");
+            setSelectedProduct(null);
         } catch (err: any) {
             console.error("Error placing order:", err);
             alert("Failed to place order: " + err.message);
@@ -211,7 +217,7 @@ export function ConsumerFeed() {
                             <p className="text-gray-500 text-sm mb-6 line-clamp-2 h-10">{product.description}</p>
 
                             <button
-                                onClick={() => handleOrder(product)}
+                                onClick={() => handleOrderClick(product)}
                                 className="w-full bg-primary text-white font-bold py-3 rounded-lg hover:bg-primary-hover transition-colors active:scale-95 transform"
                             >
                                 Order Now
@@ -220,6 +226,15 @@ export function ConsumerFeed() {
                     </div>
                 ))}
             </div>
+
+            {/* Order Modal */}
+            {selectedProduct && (
+                <OrderModal
+                    product={selectedProduct}
+                    onClose={() => setSelectedProduct(null)}
+                    onConfirm={confirmOrder}
+                />
+            )}
         </div>
     );
 }

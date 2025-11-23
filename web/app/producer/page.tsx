@@ -17,6 +17,12 @@ export default function ProducerPage() {
     const [password, setPassword] = useState("");
     const [isSignUp, setIsSignUp] = useState(false);
 
+    const [producerName, setProducerName] = useState("");
+    const [otpSent, setOtpSent] = useState(false);
+    const [otpCode, setOtpCode] = useState("");
+
+    const ALLOWED_DOMAINS = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'icloud.com', 'aol.com', 'protonmail.com'];
+
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
             setSession(session);
@@ -32,26 +38,62 @@ export default function ProducerPage() {
         return () => subscription.unsubscribe();
     }, []);
 
-    const handleAuth = async (e: React.FormEvent) => {
+    const validateEmailDomain = (email: string) => {
+        const domain = email.split('@')[1];
+        if (!domain) return false;
+        return ALLOWED_DOMAINS.includes(domain.toLowerCase());
+    };
+
+    const handleSendCode = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
-        if (isSignUp) {
-            const { error } = await supabase.auth.signUp({
-                email,
-                password,
-                options: {
-                    data: { role: 'producer' } // Mark as producer
-                }
-            });
-            if (error) alert(error.message);
-            else alert("Check your email for the confirmation link!");
-        } else {
-            const { error } = await supabase.auth.signInWithPassword({
-                email,
-                password,
-            });
-            if (error) alert(error.message);
+
+        if (!validateEmailDomain(email)) {
+            alert("Please use a major email provider (Gmail, Yahoo, Outlook, etc.)");
+            setLoading(false);
+            return;
         }
+
+        if (isSignUp && producerName.trim().length < 3) {
+            alert("Producer Name must be at least 3 characters long.");
+            setLoading(false);
+            return;
+        }
+
+        const { error } = await supabase.auth.signInWithOtp({
+            email,
+            options: {
+                emailRedirectTo: window.location.origin + '/producer',
+                data: isSignUp ? {
+                    role: 'producer',
+                    full_name: producerName
+                } : undefined
+            }
+        });
+
+        if (error) {
+            alert(error.message);
+        } else {
+            setOtpSent(true);
+            alert("Check your email for the login code!");
+        }
+        setLoading(false);
+    };
+
+    const handleVerifyCode = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+
+        const { error } = await supabase.auth.verifyOtp({
+            email,
+            token: otpCode,
+            type: 'email',
+        });
+
+        if (error) {
+            alert(error.message);
+        }
+        // Session update handled by onAuthStateChange
         setLoading(false);
     };
 
@@ -71,46 +113,89 @@ export default function ProducerPage() {
                                 {isSignUp ? "Start selling your drops today." : "Sign in to manage your drops."}
                             </p>
                         </div>
-                        <form className="mt-8 space-y-6" onSubmit={handleAuth}>
-                            <div className="rounded-md shadow-sm -space-y-px">
-                                <div className="mb-4">
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                                    <input
-                                        type="email"
-                                        required
-                                        className="appearance-none rounded-lg relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm bg-gray-50"
-                                        placeholder="chef@example.com"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                                    <input
-                                        type="password"
-                                        required
-                                        className="appearance-none rounded-lg relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm bg-gray-50"
-                                        placeholder="••••••••"
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                    />
-                                </div>
-                            </div>
 
-                            <div>
-                                <button
-                                    type="submit"
-                                    disabled={loading}
-                                    className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-lg text-white bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors"
-                                >
-                                    {isSignUp ? "Create Account" : "Sign In"}
-                                </button>
-                            </div>
-                        </form>
+                        {!otpSent ? (
+                            <form className="mt-8 space-y-6" onSubmit={handleSendCode}>
+                                <div className="rounded-md shadow-sm -space-y-px">
+                                    {isSignUp && (
+                                        <div className="mb-4">
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Producer Name</label>
+                                            <input
+                                                type="text"
+                                                required
+                                                className="appearance-none rounded-lg relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm bg-gray-50"
+                                                placeholder="e.g. Joe's Burgers"
+                                                value={producerName}
+                                                onChange={(e) => setProducerName(e.target.value)}
+                                            />
+                                        </div>
+                                    )}
+                                    <div className="mb-4">
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                        <input
+                                            type="email"
+                                            required
+                                            className="appearance-none rounded-lg relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm bg-gray-50"
+                                            placeholder="chef@example.com"
+                                            value={email}
+                                            onChange={(e) => setEmail(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <button
+                                        type="submit"
+                                        disabled={loading}
+                                        className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-lg text-white bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors"
+                                    >
+                                        Send Login Code
+                                    </button>
+                                </div>
+                            </form>
+                        ) : (
+                            <form className="mt-8 space-y-6" onSubmit={handleVerifyCode}>
+                                <div className="rounded-md shadow-sm -space-y-px">
+                                    <div className="mb-4">
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Enter Code</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            className="appearance-none rounded-lg relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm bg-gray-50 text-center tracking-widest text-2xl"
+                                            placeholder="123456"
+                                            value={otpCode}
+                                            onChange={(e) => setOtpCode(e.target.value)}
+                                            maxLength={6}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <button
+                                        type="submit"
+                                        disabled={loading}
+                                        className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-lg text-white bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors"
+                                    >
+                                        Verify & Sign In
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setOtpSent(false)}
+                                        className="mt-4 w-full text-center text-sm text-gray-500 hover:text-gray-700"
+                                    >
+                                        Use a different email
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+
                         <div className="text-center">
                             <button
                                 className="text-sm font-medium text-primary hover:text-primary-hover"
-                                onClick={() => setIsSignUp(!isSignUp)}
+                                onClick={() => {
+                                    setIsSignUp(!isSignUp);
+                                    setOtpSent(false);
+                                }}
                             >
                                 {isSignUp
                                     ? "Already have an account? Sign in"
