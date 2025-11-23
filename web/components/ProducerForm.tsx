@@ -25,6 +25,7 @@ export function ProducerForm({ className, onSuccess }: ProducerFormProps) {
     const [description, setDescription] = useState("");
     const [price, setPrice] = useState("");
     const [imageUrl, setImageUrl] = useState("");
+    const [category, setCategory] = useState("");
 
     // Get Location on Mount
     useEffect(() => {
@@ -69,7 +70,8 @@ export function ProducerForm({ className, onSuccess }: ProducerFormProps) {
                 price: parseFloat(price),
                 image_url: imageUrl,
                 lat: location.lat,
-                long: location.long
+                long: location.long,
+                tags: category ? [category] : []
             });
 
             if (rpcError) throw rpcError;
@@ -79,6 +81,7 @@ export function ProducerForm({ className, onSuccess }: ProducerFormProps) {
             setDescription("");
             setPrice("");
             setImageUrl("");
+            setCategory("");
             if (onSuccess) onSuccess();
 
         } catch (err: any) {
@@ -144,15 +147,37 @@ export function ProducerForm({ className, onSuccess }: ProducerFormProps) {
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">Image URL</label>
-                    <input
-                        type="url"
-                        value={imageUrl}
-                        onChange={(e) => setImageUrl(e.target.value)}
-                        className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none"
-                        placeholder="https://..."
-                    />
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Category</label>
+                    <select
+                        value={category}
+                        onChange={(e) => setCategory(e.target.value)}
+                        className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none appearance-none"
+                        required
+                    >
+                        <option value="" disabled>Select...</option>
+                        <option value="vegan">Vegan 🥗</option>
+                        <option value="dessert">Dessert 🍰</option>
+                        <option value="spicy">Spicy 🌶️</option>
+                        <option value="drinks">Drinks 🥤</option>
+                        <option value="bakery">Bakery 🥐</option>
+                        <option value="asian">Asian 🍜</option>
+                        <option value="mexican">Mexican 🌮</option>
+                        <option value="italian">Italian 🍝</option>
+                        <option value="burgers">Burgers 🍔</option>
+                        <option value="other">Other 🍽️</option>
+                    </select>
                 </div>
+            </div>
+
+            <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-2">Image URL</label>
+                <input
+                    type="url"
+                    value={imageUrl}
+                    onChange={(e) => setImageUrl(e.target.value)}
+                    className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none"
+                    placeholder="https://..."
+                />
             </div>
 
             <div className="pt-4 border-t border-gray-100">

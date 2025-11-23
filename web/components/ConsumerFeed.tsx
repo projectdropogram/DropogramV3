@@ -1,102 +1,106 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
-import { OrderModal } from './OrderModal';
+import { useEffect, useState, useMemo } from "react";
+import { createClient } from "@supabase/supabase-js";
+import { Search, Map as MapIcon, List, Heart } from "lucide-react";
+import { OrderModal } from "./OrderModal";
+import { CategoryBar } from "./CategoryBar";
+import dynamic from "next/dynamic";
+
+// Dynamically import MapView to avoid SSR issues with Leaflet
+const MapView = dynamic(() => import("./MapView").then(mod => mod.MapView), {
+    ssr: false,
+    loading: () => <div className="h-[60vh] w-full bg-gray-100 animate-pulse rounded-xl flex items-center justify-center">Loading Map...</div>
+});
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-interface Product {
+type Product = {
     id: string;
     title: string;
     description: string;
     price: number;
     image_url: string;
     dist_meters: number;
-}
+    producer_id: string;
+    lat: number;
+    long: number;
+};
 
 export function ConsumerFeed() {
     const [products, setProducts] = useState<Product[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [location, setLocation] = useState<{ lat: number; long: number } | null>(null);
-    const [error, setError] = useState<string | null>(null);
-    const [radius, setRadius] = useState(50000); // 50km default
+    const [loading, setLoading] = useState(true);
+    const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+    const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+    const [favorites, setFavorites] = useState<Set<string>>(new Set());
     const [session, setSession] = useState<any>(null);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
-    // Get Session on Mount
-    useEffect(() => {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setSession(session);
-        });
-    }, []);
-
-    // Get Location on Mount
-    useEffect(() => {
-        if ('geolocation' in navigator) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    setLocation({
-                        lat: position.coords.latitude,
-                        long: position.coords.longitude,
-                    });
-                },
-                (err) => {
-                    console.error("Error getting location:", err);
-                }
-            );
-        }
-    }, []);
-
-    // Fetch Products when location or radius changes
-    useEffect(() => {
-        if (location) {
-            fetchProducts();
-        }
-    }, [location, radius]);
+    const [radius, setRadius] = useState(80467); // 50 miles default
 
     // Debounce search
     useEffect(() => {
-        const timer = setTimeout(() => {
-            if (location) fetchProducts();
-        }, 500);
+        const timer = setTimeout(() => setDebouncedSearch(searchQuery), 500);
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
-    const fetchProducts = async () => {
-        if (!location) return;
-        setLoading(true);
-        setError(null);
+    useEffect(() => {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setSession(session);
+            if (session) fetchFavorites(session.user.id);
+        });
 
-        try {
-            const { data, error } = await supabase.rpc('find_nearby_products', {
-                lat: location.lat,
-                long: location.long,
-                radius_meters: radius,
-                search_text: searchQuery || null
-            });
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    setUserLocation({
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude,
+                    });
+                },
+                (error) => {
+                    console.error("Error getting location:", error);
+                    // Fallback to San Francisco
+                    setUserLocation({ lat: 37.7749, lng: -122.4194 });
+                }
+            );
+        } else {
+            // Fallback
+            setUserLocation({ lat: 37.7749, lng: -122.4194 });
+        }
+    }, []);
 
-            if (error) throw error;
-            setProducts(data || []);
+    useEffect(() => {
+        if (userLocation) {
+            fetchNearbyProducts();
+        }
+    }, [userLocation, debouncedSearch, selectedCategory, radius]);
 
-        } catch (err: any) {
-            console.error("Error fetching feed:", err);
-            setError(err.message);
-        } finally {
-            setLoading(false);
+    const fetchFavorites = async (userId: string) => {
+        const { data } = await supabase.from('favorites').select('product_id').eq('user_id', userId);
+        if (data) {
+            setFavorites(new Set(data.map(f => f.product_id)));
         }
     };
 
-    const handleOrderClick = (product: Product) => {
-        if (!session) {
-            alert("Please sign in to place an order.");
-            return;
+    const toggleFavorite = async (productId: string) => {
+        if (!session) return alert("Please sign in to save favorites");
+
+        const newFavorites = new Set(favorites);
+        if (favorites.has(productId)) {
+            newFavorites.delete(productId);
+            await supabase.from('favorites').delete().match({ user_id: session.user.id, product_id: productId });
+        } else {
+            newFavorites.add(productId);
+            await supabase.from('favorites').insert({ user_id: session.user.id, product_id: productId });
         }
-        setSelectedProduct(product);
+        setFavorites(newFavorites);
     };
 
     const confirmOrder = async () => {
@@ -120,135 +124,142 @@ export function ConsumerFeed() {
         }
     };
 
-    return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
-            {/* Hero Section */}
-            <div className="py-8">
-                <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">
-                    Cravings, <span className="text-primary">Dropped.</span>
-                </h1>
-                <p className="mt-2 text-lg text-gray-600">
-                    Discover homemade food and local goods near you.
-                </p>
-            </div>
+    const fetchNearbyProducts = async () => {
+        if (!userLocation) return;
+        setLoading(true);
 
-            {/* Filters Bar */}
-            <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md py-4 border-b border-gray-100 mb-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-4 w-full sm:w-auto">
-                    {/* Search Bar */}
-                    <div className="relative flex-grow sm:flex-grow-0 w-full sm:w-64">
+        const { data, error } = await supabase.rpc("find_nearby_products", {
+            lat: userLocation.lat,
+            long: userLocation.lng,
+            radius_meters: radius,
+            search_text: debouncedSearch || null,
+            tag_filter: selectedCategory || null
+        });
+
+        if (error) {
+            console.error("Error fetching products:", error);
+        } else {
+            setProducts(data || []);
+        }
+        setLoading(false);
+    };
+
+    return (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            {/* Header & Search */}
+            <div className="flex flex-col md:flex-row gap-4 mb-6 items-center justify-between">
+                <div className="relative flex-1 w-full flex gap-2">
+                    <div className="relative flex-grow">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <Search className="h-5 w-5 text-gray-400" />
+                        </div>
                         <input
                             type="text"
-                            placeholder="Search for food..."
-                            className="w-full pl-10 pr-4 py-2 rounded-full bg-gray-100 border-none focus:ring-2 focus:ring-primary focus:bg-white transition-all"
+                            className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-primary transition-all shadow-sm"
+                            placeholder="Search for lasagna, cookies, tacos..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
-                        <span className="absolute left-3 top-2.5 text-gray-400">🔍</span>
                     </div>
 
-                    {/* Radius Filter */}
-                    <div className="flex items-center gap-2 bg-gray-100 rounded-full px-4 py-2 flex-shrink-0">
-                        <span className="text-sm font-medium text-gray-600">Distance:</span>
+                    {/* Radius Selector */}
+                    <div className="relative">
                         <select
-                            className="bg-transparent text-sm font-bold text-gray-900 focus:outline-none cursor-pointer"
-                            value={radius / 1000}
-                            onChange={(e) => setRadius(Number(e.target.value) * 1000)}
+                            value={radius}
+                            onChange={(e) => setRadius(Number(e.target.value))}
+                            className="appearance-none pl-4 pr-10 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 font-medium focus:outline-none focus:bg-white focus:ring-2 focus:ring-primary transition-all shadow-sm cursor-pointer h-full"
+                            style={{ fontFamily: 'inherit' }}
                         >
-                            <option value="5">5 km</option>
-                            <option value="10">10 km</option>
-                            <option value="50">50 km</option>
-                            <option value="5000">Global</option>
+                            <option value={8046}>5 miles</option>
+                            <option value={16093}>10 miles</option>
+                            <option value={40233}>25 miles</option>
+                            <option value={80467}>50 miles</option>
+                            <option value={20000000}>Global 🌍</option>
                         </select>
+                        <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-500">
+                            <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                                <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" fillRule="evenodd"></path>
+                            </svg>
+                        </div>
                     </div>
                 </div>
 
-                {/* Location Status */}
-                <div className="hidden sm:block text-xs text-gray-400">
-                    {location ? `📍 ${location.lat.toFixed(2)}, ${location.long.toFixed(2)}` : 'Detecting location...'}
-                </div>
-            </div>
-
-            {/* Manual Location Fallback */}
-            {!location && (
-                <div className="mb-8 p-6 bg-accent rounded-xl text-center">
-                    <p className="text-gray-700 mb-4 font-medium">Enable location to see what's cooking nearby.</p>
+                <div className="flex bg-gray-100 p-1 rounded-lg">
                     <button
-                        className="text-primary font-bold hover:underline"
-                        onClick={() => setLocation({ lat: 40.7128, long: -74.0060 })}
+                        onClick={() => setViewMode('list')}
+                        className={`p-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-primary' : 'text-gray-500'}`}
                     >
-                        Use NYC (Demo)
+                        <List className="h-5 w-5" />
+                    </button>
+                    <button
+                        onClick={() => setViewMode('map')}
+                        className={`p-2 rounded-md transition-all ${viewMode === 'map' ? 'bg-white shadow-sm text-primary' : 'text-gray-500'}`}
+                    >
+                        <MapIcon className="h-5 w-5" />
                     </button>
                 </div>
-            )}
-
-            {/* Error State */}
-            {error && (
-                <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-8 border border-red-100">
-                    {error}
-                </div>
-            )}
-
-            {/* Loading State */}
-            {loading && products.length === 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 animate-pulse">
-                    {[1, 2, 3].map(i => (
-                        <div key={i} className="h-64 bg-gray-100 rounded-xl"></div>
-                    ))}
-                </div>
-            )}
-
-            {/* Empty State */}
-            {!loading && products.length === 0 && location && (
-                <div className="text-center py-20">
-                    <div className="text-6xl mb-4">🍽️</div>
-                    <h3 className="text-xl font-bold text-gray-900">No drops found nearby.</h3>
-                    <p className="text-gray-500 mt-2">Try increasing the distance radius!</p>
-                </div>
-            )}
-
-            {/* Product Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                {products.map((product) => (
-                    <div key={product.id} className="group bg-white rounded-xl card-shadow overflow-hidden transition-all duration-300 hover:-translate-y-1 cursor-pointer">
-                        {/* Image Container */}
-                        <div className="relative h-56 bg-gray-200 overflow-hidden">
-                            {product.image_url ? (
-                                <img
-                                    src={product.image_url}
-                                    alt={product.title}
-                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                                />
-                            ) : (
-                                <div className="flex items-center justify-center h-full text-gray-400 bg-gray-100">
-                                    <span className="text-4xl">🥘</span>
-                                </div>
-                            )}
-                            {/* Distance Badge */}
-                            <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur text-gray-800 text-xs font-bold px-3 py-1 rounded-full shadow-sm">
-                                {(product.dist_meters / 1000).toFixed(1)} km
-                            </div>
-                        </div>
-
-                        {/* Content */}
-                        <div className="p-5">
-                            <div className="flex justify-between items-start mb-2">
-                                <h3 className="font-bold text-lg text-gray-900 leading-tight">{product.title}</h3>
-                                <span className="font-bold text-gray-900 bg-gray-100 px-2 py-1 rounded text-sm">${product.price}</span>
-                            </div>
-                            <p className="text-gray-500 text-sm mb-6 line-clamp-2 h-10">{product.description}</p>
-
-                            <button
-                                onClick={() => handleOrderClick(product)}
-                                className="w-full bg-primary text-white font-bold py-3 rounded-lg hover:bg-primary-hover transition-colors active:scale-95 transform"
-                            >
-                                Order Now
-                            </button>
-                        </div>
-                    </div>
-                ))}
             </div>
 
+            {/* Categories */}
+            <div className="mb-8">
+                <CategoryBar onSelect={setSelectedCategory} />
+            </div>
+
+            {/* Content */}
+            {loading ? (
+                <div className="text-center py-20 text-gray-500">Finding drops near you...</div>
+            ) : viewMode === 'map' && userLocation ? (
+                <MapView products={products} userLocation={userLocation} />
+            ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {products.map((product) => (
+                        <div key={product.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow group relative">
+                            <div className="relative h-48 bg-gray-200">
+                                {product.image_url ? (
+                                    <img
+                                        src={product.image_url}
+                                        alt={product.title}
+                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                    />
+                                ) : (
+                                    <div className="flex items-center justify-center h-full text-gray-400">
+                                        No Image
+                                    </div>
+                                )}
+                                <div className="absolute top-3 right-3">
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); toggleFavorite(product.id); }}
+                                        className={`p-2 rounded-full bg-white/90 backdrop-blur-sm shadow-sm transition-transform active:scale-90 ${favorites.has(product.id) ? 'text-red-500' : 'text-gray-400 hover:text-red-500'}`}
+                                    >
+                                        <Heart className={`h-5 w-5 ${favorites.has(product.id) ? 'fill-current' : ''}`} />
+                                    </button>
+                                </div>
+                                <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg text-xs font-bold text-gray-700 shadow-sm">
+                                    {(product.dist_meters / 1609.34).toFixed(1)} mi away
+                                </div>
+                            </div>
+                            <div className="p-5">
+                                <div className="flex justify-between items-start mb-2">
+                                    <h3 className="text-lg font-bold text-gray-900 line-clamp-1">{product.title}</h3>
+                                    <span className="text-lg font-bold text-primary">${product.price}</span>
+                                </div>
+                                <p className="text-gray-500 text-sm mb-4 line-clamp-2">{product.description}</p>
+                                <button
+                                    onClick={() => setSelectedProduct(product)}
+                                    className="w-full bg-primary text-white font-bold py-3 rounded-lg hover:bg-primary-hover transition-colors active:scale-95 transform"
+                                >
+                                    Order Now
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                    {products.length === 0 && (
+                        <div className="col-span-full text-center py-20 text-gray-400">
+                            No drops found nearby. Try changing your search or category!
+                        </div>
+                    )}
+                </div>
+            )}
             {/* Order Modal */}
             {selectedProduct && (
                 <OrderModal
