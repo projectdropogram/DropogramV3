@@ -24,6 +24,7 @@ export function ConsumerFeed() {
     const [location, setLocation] = useState<{ lat: number; long: number } | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [radius, setRadius] = useState(50000); // 50km default
+    const [searchQuery, setSearchQuery] = useState("");
     const [session, setSession] = useState<any>(null);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
@@ -51,12 +52,20 @@ export function ConsumerFeed() {
         }
     }, []);
 
-    // Fetch Products when location changes
+    // Fetch Products when location or radius changes
     useEffect(() => {
         if (location) {
             fetchProducts();
         }
     }, [location, radius]);
+
+    // Debounce search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (location) fetchProducts();
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
 
     const fetchProducts = async () => {
         if (!location) return;
@@ -67,7 +76,8 @@ export function ConsumerFeed() {
             const { data, error } = await supabase.rpc('find_nearby_products', {
                 lat: location.lat,
                 long: location.long,
-                radius_meters: radius
+                radius_meters: radius,
+                search_text: searchQuery || null
             });
 
             if (error) throw error;
@@ -123,10 +133,22 @@ export function ConsumerFeed() {
             </div>
 
             {/* Filters Bar */}
-            <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md py-4 border-b border-gray-100 mb-8 flex items-center justify-between">
-                <div className="flex items-center gap-4 overflow-x-auto pb-2 sm:pb-0">
+            <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md py-4 border-b border-gray-100 mb-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-4 w-full sm:w-auto">
+                    {/* Search Bar */}
+                    <div className="relative flex-grow sm:flex-grow-0 w-full sm:w-64">
+                        <input
+                            type="text"
+                            placeholder="Search for food..."
+                            className="w-full pl-10 pr-4 py-2 rounded-full bg-gray-100 border-none focus:ring-2 focus:ring-primary focus:bg-white transition-all"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                        <span className="absolute left-3 top-2.5 text-gray-400">🔍</span>
+                    </div>
+
                     {/* Radius Filter */}
-                    <div className="flex items-center gap-2 bg-gray-100 rounded-full px-4 py-2">
+                    <div className="flex items-center gap-2 bg-gray-100 rounded-full px-4 py-2 flex-shrink-0">
                         <span className="text-sm font-medium text-gray-600">Distance:</span>
                         <select
                             className="bg-transparent text-sm font-bold text-gray-900 focus:outline-none cursor-pointer"
