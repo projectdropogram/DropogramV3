@@ -12,7 +12,7 @@ export function NavBar() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between h-16">
                     <div className="flex items-center">
-                        <Link href="/feed">
+                        <Link href="/consumer">
                             <h1 className="text-2xl font-extrabold text-primary tracking-tight cursor-pointer">
                                 Dropogram
                             </h1>
@@ -24,7 +24,7 @@ export function NavBar() {
                                 Drop Studio
                             </span>
                         </Link>
-                        <Link href="/feed">
+                        <Link href="/consumer">
                             <span className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all cursor-pointer inline-block ${!isProducer ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}>
                                 Consumer
                             </span>
