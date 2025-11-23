@@ -20,7 +20,6 @@ type Order = {
     };
     profiles: {
         full_name: string;
-        email: string;
     };
 };
 
@@ -68,8 +67,7 @@ export function ProducerOrderBoard({ producerId }: { producerId: string }) {
                         producer_id
                     ),
                     profiles (
-                        full_name,
-                        email
+                        full_name
                     )
                 `)
                 .eq('products.producer_id', producerId)
@@ -78,7 +76,8 @@ export function ProducerOrderBoard({ producerId }: { producerId: string }) {
             if (error) throw error;
             setOrders(data as any);
         } catch (err) {
-            console.error("Error fetching orders:", err);
+            console.error("Error fetching orders:", JSON.stringify(err, null, 2));
+            console.error(err);
         } finally {
             setLoading(false);
         }
@@ -114,7 +113,7 @@ export function ProducerOrderBoard({ producerId }: { producerId: string }) {
             </div>
 
             <div className="text-sm text-gray-600 mb-4">
-                Customer: <span className="font-medium">{order.profiles?.full_name || order.profiles?.email || 'Guest'}</span>
+                Customer: <span className="font-medium">{order.profiles?.full_name || 'Guest'}</span>
             </div>
 
             <div className="flex gap-2">

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { NavBar } from "@/components/NavBar";
 import { useRouter } from "next/navigation";
+import { ReviewModal } from "@/components/ReviewModal";
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -30,6 +31,7 @@ export default function OrdersPage() {
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
     const [session, setSession] = useState<any>(null);
+    const [reviewOrderId, setReviewOrderId] = useState<string | null>(null);
     const router = useRouter();
 
     useEffect(() => {
@@ -166,7 +168,7 @@ export default function OrdersPage() {
                     <h2 className="text-xl font-bold text-gray-800 mb-4">Past Orders</h2>
                     <div className="space-y-4">
                         {pastOrders.map(order => (
-                            <div key={order.id} className="bg-gray-50 border border-gray-100 rounded-lg p-4 flex items-center justify-between opacity-75 hover:opacity-100 transition-opacity">
+                            <div key={order.id} className="bg-gray-50 border border-gray-100 rounded-lg p-4 flex items-center justify-between opacity-90 hover:opacity-100 transition-opacity">
                                 <div className="flex items-center gap-4">
                                     <div className="h-12 w-12 bg-gray-200 rounded-md overflow-hidden grayscale">
                                         {order.products.image_url && (
@@ -178,9 +180,19 @@ export default function OrdersPage() {
                                         <p className="text-gray-500 text-xs">{new Date(order.created_at).toLocaleDateString()}</p>
                                     </div>
                                 </div>
-                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(order.status)}`}>
-                                    {getStatusText(order.status)}
-                                </span>
+                                <div className="flex items-center gap-3">
+                                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(order.status)}`}>
+                                        {getStatusText(order.status)}
+                                    </span>
+                                    {order.status === 'completed' && (
+                                        <button
+                                            onClick={() => setReviewOrderId(order.id)}
+                                            className="text-xs font-bold text-primary hover:underline"
+                                        >
+                                            Rate Order ⭐
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         ))}
                         {pastOrders.length === 0 && activeOrders.length === 0 && (
@@ -191,6 +203,18 @@ export default function OrdersPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Review Modal */}
+            {reviewOrderId && (
+                <ReviewModal
+                    orderId={reviewOrderId}
+                    onClose={() => setReviewOrderId(null)}
+                    onSuccess={() => {
+                        // Ideally refresh orders or mark as reviewed
+                        setReviewOrderId(null);
+                    }}
+                />
+            )}
         </div>
     );
 }
