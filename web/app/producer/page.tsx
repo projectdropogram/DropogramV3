@@ -1,6 +1,7 @@
 "use client";
 
 import { ProducerForm } from "@/components/ProducerForm";
+import { ProducerOrderBoard } from "@/components/ProducerOrderBoard";
 import { NavBar } from "@/components/NavBar";
 import { createClient } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
@@ -16,6 +17,7 @@ export default function ProducerPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [isSignUp, setIsSignUp] = useState(false);
+    const [activeTab, setActiveTab] = useState<'drops' | 'orders'>('orders');
 
     const [producerName, setProducerName] = useState("");
     const [otpSent, setOtpSent] = useState(false);
@@ -63,7 +65,7 @@ export default function ProducerPage() {
         const { error } = await supabase.auth.signInWithOtp({
             email,
             options: {
-                emailRedirectTo: window.location.origin + '/producer',
+                // emailRedirectTo: window.location.origin + '/producer',
                 data: isSignUp ? {
                     role: 'producer',
                     full_name: producerName
@@ -162,10 +164,10 @@ export default function ProducerPage() {
                                             type="text"
                                             required
                                             className="appearance-none rounded-lg relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm bg-gray-50 text-center tracking-widest text-2xl"
-                                            placeholder="123456"
+                                            placeholder="12345678"
                                             value={otpCode}
                                             onChange={(e) => setOtpCode(e.target.value)}
-                                            maxLength={6}
+                                            maxLength={8}
                                         />
                                     </div>
                                 </div>
@@ -211,25 +213,38 @@ export default function ProducerPage() {
     return (
         <div className="min-h-screen bg-white">
             <NavBar />
-            <div className="max-w-3xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-                <div className="text-center mb-10">
-                    <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight mb-2">
+            <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+                {/* Header & Tabs */}
+                <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+                    <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
                         Drop Studio
                     </h1>
-                    <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-                        <span>Logged in as {session.user.email}</span>
-                        <span>•</span>
+
+                    <div className="flex bg-gray-100 p-1 rounded-lg">
                         <button
-                            onClick={() => supabase.auth.signOut()}
-                            className="text-primary font-medium hover:underline"
+                            onClick={() => setActiveTab('orders')}
+                            className={`px-6 py-2 rounded-md text-sm font-bold transition-all ${activeTab === 'orders' ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}
                         >
-                            Sign Out
+                            Kitchen Orders
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('drops')}
+                            className={`px-6 py-2 rounded-md text-sm font-bold transition-all ${activeTab === 'drops' ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}
+                        >
+                            My Drops
                         </button>
                     </div>
                 </div>
 
-                <div className="bg-white rounded-2xl card-shadow p-8 border border-gray-100">
-                    <ProducerForm />
+                {/* Content */}
+                <div className="animate-fade-in">
+                    {activeTab === 'orders' ? (
+                        <ProducerOrderBoard producerId={session.user.id} />
+                    ) : (
+                        <div className="max-w-3xl mx-auto">
+                            <ProducerForm />
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
