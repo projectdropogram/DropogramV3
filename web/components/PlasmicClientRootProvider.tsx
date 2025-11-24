@@ -12,10 +12,10 @@ PLASMIC_CLIENT.registerComponent(ProducerForm, {
     },
 });
 
-export function PlasmicClientRootProvider(props: { prefetchedData: any; componentName: string }) {
+export function PlasmicClientRootProvider(props: { children: React.ReactNode; prefetchedData?: any }) {
     return (
         <PlasmicRootProvider loader={PLASMIC_CLIENT} prefetchedData={props.prefetchedData}>
-            <PlasmicComponent component={props.componentName} />
+            {props.children}
         </PlasmicRootProvider>
     );
 }

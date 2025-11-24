@@ -201,15 +201,15 @@ export function ConsumerFeed() {
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             {/* Header & Search */}
-            <div className="flex flex-col md:flex-row gap-4 mb-6 items-center justify-between">
+            <div className="flex flex-col md:flex-row gap-4 mb-8 items-center justify-between sticky top-24 z-40 glass-panel p-4 rounded-2xl shadow-sm transition-all">
                 <div className="relative flex-1 w-full flex gap-2">
                     <div className="relative flex-grow">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                             <Search className="h-5 w-5 text-gray-400" />
                         </div>
                         <input
                             type="text"
-                            className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-primary transition-all shadow-sm"
+                            className="block w-full pl-11 pr-4 py-3 border-none rounded-xl leading-5 bg-white/50 placeholder-gray-500 focus:outline-none focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all font-medium"
                             placeholder="Search for lasagna, cookies, tacos..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -221,7 +221,7 @@ export function ConsumerFeed() {
                         <select
                             value={radius}
                             onChange={(e) => setRadius(Number(e.target.value))}
-                            className="appearance-none pl-4 pr-10 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 font-medium focus:outline-none focus:bg-white focus:ring-2 focus:ring-primary transition-all shadow-sm cursor-pointer h-full"
+                            className="appearance-none pl-4 pr-10 py-3 border-none rounded-xl bg-white/50 text-gray-700 font-bold focus:outline-none focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer h-full"
                             style={{ fontFamily: 'inherit' }}
                         >
                             <option value={8046}>5 miles</option>
@@ -238,16 +238,16 @@ export function ConsumerFeed() {
                     </div>
                 </div>
 
-                <div className="flex bg-gray-100 p-1 rounded-lg">
+                <div className="flex bg-white/50 p-1 rounded-xl backdrop-blur-sm">
                     <button
                         onClick={() => setViewMode('list')}
-                        className={`p-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-primary' : 'text-gray-500'}`}
+                        className={`p-2.5 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-primary' : 'text-gray-500 hover:text-gray-700'}`}
                     >
                         <List className="h-5 w-5" />
                     </button>
                     <button
                         onClick={() => setViewMode('map')}
-                        className={`p-2 rounded-md transition-all ${viewMode === 'map' ? 'bg-white shadow-sm text-primary' : 'text-gray-500'}`}
+                        className={`p-2.5 rounded-lg transition-all ${viewMode === 'map' ? 'bg-white shadow-sm text-primary' : 'text-gray-500 hover:text-gray-700'}`}
                     >
                         <MapIcon className="h-5 w-5" />
                     </button>
@@ -255,71 +255,81 @@ export function ConsumerFeed() {
             </div>
 
             {/* Categories */}
-            <div className="mb-8">
+            <div className="mb-10">
                 <CategoryBar onSelect={setSelectedCategory} />
             </div>
 
             {/* Content */}
             {loading ? (
-                <div className="text-center py-20 text-gray-500">Finding drops near you...</div>
+                <div className="text-center py-32">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                    <p className="text-gray-500 font-medium">Finding delicious drops near you...</p>
+                </div>
             ) : viewMode === 'map' && userLocation ? (
-                <MapView products={products} userLocation={userLocation} />
+                <div className="rounded-3xl overflow-hidden shadow-lg border border-white/50">
+                    <MapView products={products} userLocation={userLocation} />
+                </div>
             ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                     {products.map((product) => (
-                        <div key={product.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow group relative">
-                            <div className="relative h-48 bg-gray-200">
+                        <div key={product.id} className="glass-card rounded-3xl overflow-hidden hover:shadow-xl transition-all duration-300 group relative flex flex-col h-full border-0">
+                            <div className="relative h-64 overflow-hidden">
                                 {product.image_url ? (
                                     <img
                                         src={product.image_url}
                                         alt={product.title}
-                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                                     />
                                 ) : (
-                                    <div className="flex items-center justify-center h-full text-gray-400">
-                                        No Image
+                                    <div className="flex items-center justify-center h-full bg-gray-100 text-gray-400 font-medium">
+                                        No Image Available
                                     </div>
                                 )}
-                                <div className="absolute top-3 right-3 flex flex-col gap-2">
+
+                                {/* Floating Actions */}
+                                <div className="absolute top-4 right-4 flex flex-col gap-3">
                                     <button
                                         onClick={(e) => { e.stopPropagation(); toggleFavorite(product.id); }}
-                                        className={`p-2 rounded-full bg-white/90 backdrop-blur-sm shadow-sm transition-transform active:scale-90 ${favorites.has(product.id) ? 'text-red-500' : 'text-gray-400 hover:text-red-500'}`}
+                                        className={`p-3 rounded-full bg-white/90 backdrop-blur-md shadow-lg transition-all hover:scale-110 active:scale-95 ${favorites.has(product.id) ? 'text-red-500' : 'text-gray-400 hover:text-red-500'}`}
                                     >
                                         <Heart className={`h-5 w-5 ${favorites.has(product.id) ? 'fill-current' : ''}`} />
                                     </button>
                                     <button
                                         onClick={(e) => { e.stopPropagation(); shareDrop(product); }}
-                                        className="p-2 rounded-full bg-white/90 backdrop-blur-sm shadow-sm text-gray-400 hover:text-blue-500 transition-transform active:scale-90"
+                                        className="p-3 rounded-full bg-white/90 backdrop-blur-md shadow-lg text-gray-400 hover:text-blue-500 transition-all hover:scale-110 active:scale-95"
                                     >
                                         <Share2 className="h-5 w-5" />
                                     </button>
                                 </div>
-                                <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg text-xs font-bold text-gray-700 shadow-sm">
-                                    {(product.dist_meters / 1609.34).toFixed(1)} mi away
+
+                                <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg text-xs font-bold text-white shadow-sm flex items-center gap-1">
+                                    <MapIcon className="h-3 w-3" />
+                                    {(product.dist_meters / 1609.34).toFixed(1)} mi
                                 </div>
                             </div>
-                            <div className="p-5">
-                                <div className="flex justify-between items-start mb-2">
-                                    <h3 className="text-lg font-bold text-gray-900 line-clamp-1">{product.title}</h3>
-                                    <span className="text-lg font-bold text-primary">${product.price}</span>
-                                </div>
-                                <p className="text-gray-500 text-sm mb-4 line-clamp-2">{product.description}</p>
 
-                                <div className="flex items-center justify-between mb-4">
+                            <div className="p-6 flex flex-col flex-grow">
+                                <div className="flex justify-between items-start mb-3">
+                                    <h3 className="text-xl font-bold text-gray-900 line-clamp-1 font-heading tracking-tight">{product.title}</h3>
+                                    <span className="text-xl font-bold text-primary font-heading">${product.price}</span>
+                                </div>
+                                <p className="text-gray-600 text-sm mb-6 line-clamp-2 leading-relaxed flex-grow">{product.description}</p>
+
+                                <div className="flex items-center justify-between mb-6 pt-4 border-t border-gray-100">
                                     {/* Producer Info & Follow */}
                                     <div className="flex items-center gap-2">
-                                        <span className="text-xs text-gray-500">By Producer</span>
+                                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Producer</span>
                                         <button
                                             onClick={(e) => { e.stopPropagation(); toggleFollow(product.producer_id); }}
-                                            className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full transition-colors ${followedProducers.has(product.producer_id) ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                            className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full transition-all ${followedProducers.has(product.producer_id) ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                                         >
                                             {followedProducers.has(product.producer_id) ? (
                                                 <>
-                                                    <Check className="h-3 w-3" /> Following
+                                                    <Check className="h-3.5 w-3.5" /> Following
                                                 </>
                                             ) : (
                                                 <>
-                                                    <UserPlus className="h-3 w-3" /> Follow
+                                                    <UserPlus className="h-3.5 w-3.5" /> Follow
                                                 </>
                                             )}
                                         </button>
@@ -328,7 +338,7 @@ export function ConsumerFeed() {
 
                                 <button
                                     onClick={() => setSelectedProduct(product)}
-                                    className="w-full bg-primary text-white font-bold py-3 rounded-lg hover:bg-primary-hover transition-colors active:scale-95 transform"
+                                    className="w-full bg-primary text-white font-bold py-4 rounded-xl hover:bg-primary-hover transition-all active:scale-95 transform shadow-lg shadow-primary/20 hover:shadow-primary/40"
                                 >
                                     Order Now
                                 </button>
@@ -336,8 +346,10 @@ export function ConsumerFeed() {
                         </div>
                     ))}
                     {products.length === 0 && (
-                        <div className="col-span-full text-center py-20 text-gray-400">
-                            No drops found nearby. Try changing your search or category!
+                        <div className="col-span-full text-center py-32">
+                            <div className="text-6xl mb-4">🍽️</div>
+                            <h3 className="text-xl font-bold text-gray-900 mb-2 font-heading">No drops found nearby</h3>
+                            <p className="text-gray-500">Try expanding your search radius or checking back later!</p>
                         </div>
                     )}
                 </div>

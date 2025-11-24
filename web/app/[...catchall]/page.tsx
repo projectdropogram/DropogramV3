@@ -20,9 +20,8 @@ export default async function PlasmicLoaderPage({
     }
 
     return (
-        <PlasmicClientRootProvider
-            prefetchedData={plasmicData}
-            componentName={plasmicData.entryCompMetas[0].name}
-        />
+        <PlasmicClientRootProvider prefetchedData={plasmicData}>
+            <PlasmicComponent component={plasmicData.entryCompMetas[0].name} />
+        </PlasmicClientRootProvider>
     );
 }

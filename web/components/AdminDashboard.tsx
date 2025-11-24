@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { Shield, Ban, CheckCircle, DollarSign, Users } from "lucide-react";
+import { Shield, Ban, CheckCircle, DollarSign, Users, Palette } from "lucide-react";
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -20,6 +20,7 @@ type Profile = {
 export function AdminDashboard() {
     const [profiles, setProfiles] = useState<Profile[]>([]);
     const [realPaymentsEnabled, setRealPaymentsEnabled] = useState(false);
+    const [theme, setTheme] = useState<'original' | 'martha'>('original');
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -32,6 +33,7 @@ export function AdminDashboard() {
         const { data: settings } = await supabase.from('app_settings').select('*').eq('id', 'global').single();
         if (settings) {
             setRealPaymentsEnabled(settings.enable_real_payments);
+            if (settings.theme) setTheme(settings.theme);
         }
 
         // Fetch Profiles
@@ -53,6 +55,20 @@ export function AdminDashboard() {
             alert("Failed to update settings: " + error.message);
         } else {
             setRealPaymentsEnabled(newValue);
+        }
+    };
+
+    const toggleTheme = async () => {
+        const newTheme = theme === 'original' ? 'martha' : 'original';
+        const { error } = await supabase
+            .from('app_settings')
+            .update({ theme: newTheme })
+            .eq('id', 'global');
+
+        if (error) {
+            alert("Failed to update theme: " + error.message);
+        } else {
+            setTheme(newTheme);
         }
     };
 
@@ -98,6 +114,30 @@ export function AdminDashboard() {
                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${realPaymentsEnabled ? 'bg-green-500' : 'bg-gray-200'}`}
                     >
                         <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${realPaymentsEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </button>
+                </div>
+            </div>
+
+            {/* Theme Settings */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+                <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <Palette className="h-5 w-5" />
+                    Appearance Settings
+                </h2>
+                <div className="flex items-center justify-between bg-gray-50 p-4 rounded-lg">
+                    <div>
+                        <h3 className="font-bold text-gray-900">Application Theme</h3>
+                        <p className="text-sm text-gray-500">
+                            {theme === 'martha'
+                                ? "Martha Musk: Modern, glassmorphism design."
+                                : "Original: Classic Uber Eats style design."}
+                        </p>
+                    </div>
+                    <button
+                        onClick={toggleTheme}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${theme === 'martha' ? 'bg-[var(--color-primary)]' : 'bg-gray-400'}`}
+                    >
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${theme === 'martha' ? 'translate-x-6' : 'translate-x-1'}`} />
                     </button>
                 </div>
             </div>
@@ -153,8 +193,8 @@ export function AdminDashboard() {
                                             <button
                                                 onClick={() => toggleBlockUser(profile.id, profile.is_blocked)}
                                                 className={`text-sm font-bold px-3 py-1 rounded-lg transition-colors ${profile.is_blocked
-                                                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                                                        : 'bg-red-100 text-red-700 hover:bg-red-200'
+                                                    ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                                    : 'bg-red-100 text-red-700 hover:bg-red-200'
                                                     }`}
                                             >
                                                 {profile.is_blocked ? "Unblock" : "Block"}
