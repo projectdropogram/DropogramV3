@@ -2,6 +2,7 @@
 
 import { ProducerForm } from "@/components/ProducerForm";
 import { ProducerOrderBoard } from "@/components/ProducerOrderBoard";
+import { SourcingOptimizer } from "@/components/SourcingOptimizer";
 import { NavBar } from "@/components/NavBar";
 import { createClient } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
@@ -17,7 +18,7 @@ export default function ProducerPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [isSignUp, setIsSignUp] = useState(false);
-    const [activeTab, setActiveTab] = useState<'drops' | 'orders'>('orders');
+    const [activeTab, setActiveTab] = useState<'drops' | 'orders' | 'sourcing'>('orders');
 
     const [producerName, setProducerName] = useState("");
     const [otpSent, setOtpSent] = useState(false);
@@ -233,6 +234,12 @@ export default function ProducerPage() {
                         >
                             My Drops
                         </button>
+                        <button
+                            onClick={() => setActiveTab('sourcing')}
+                            className={`px-6 py-2 rounded-md text-sm font-bold transition-all ${activeTab === 'sourcing' ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}
+                        >
+                            Smart Sourcing
+                        </button>
                     </div>
                 </div>
 
@@ -240,10 +247,12 @@ export default function ProducerPage() {
                 <div className="animate-fade-in">
                     {activeTab === 'orders' ? (
                         <ProducerOrderBoard producerId={session.user.id} />
-                    ) : (
+                    ) : activeTab === 'drops' ? (
                         <div className="max-w-3xl mx-auto">
                             <ProducerForm />
                         </div>
+                    ) : (
+                        <SourcingOptimizer />
                     )}
                 </div>
             </div>
