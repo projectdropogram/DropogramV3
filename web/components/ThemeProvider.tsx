@@ -8,54 +8,38 @@ type Theme = 'original' | 'martha';
 interface ThemeContextType {
     theme: Theme;
     toggleTheme: () => Promise<void>;
+    toolsEnabled: boolean;
+    dropogramEnabled: boolean;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const [theme, setTheme] = useState<Theme>('original');
+    const [toolsEnabled, setToolsEnabled] = useState(false);
+    const [dropogramEnabled, setDropogramEnabled] = useState(true);
 
     useEffect(() => {
-        // Fetch initial theme
-        const fetchTheme = async () => {
+        // Fetch initial settings (theme + feature flags)
+        const fetchSettings = async () => {
             const { data } = await supabase
                 .from('app_settings')
-                .select('theme')
+                .select('theme, tools_enabled, dropogram_enabled')
                 .eq('id', 'global')
                 .single();
 
-            if (data?.theme) {
-                setTheme(data.theme as Theme);
+            if (data) {
+                if (data.theme) setTheme(data.theme as Theme);
+                if (typeof data.tools_enabled === 'boolean') setToolsEnabled(data.tools_enabled);
+                if (typeof data.dropogram_enabled === 'boolean') setDropogramEnabled(data.dropogram_enabled);
             }
         };
 
-        fetchTheme();
+        fetchSettings();
 
-        // Subscribe to changes
-        const channel = supabase
-            .channel('app_settings_changes')
-            .on(
-                'postgres_changes',
-                {
-                    event: 'UPDATE',
-                    schema: 'public',
-                    table: 'app_settings',
-                    filter: 'id=eq.global',
-                },
-                (payload) => {
-                    console.log('Theme update received:', payload);
-                    if (payload.new.theme) {
-                        setTheme(payload.new.theme as Theme);
-                    }
-                }
-            )
-            .subscribe((status) => {
-                console.log('Theme subscription status:', status);
-            });
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
+        // Poll for settings changes (Realtime not available on free plan)
+        const interval = setInterval(fetchSettings, 30000);
+        return () => clearInterval(interval);
     }, []);
 
     useEffect(() => {
@@ -85,7 +69,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     };
 
     return (
-        <ThemeContext.Provider value={{ theme, toggleTheme }}>
+        <ThemeContext.Provider value={{ theme, toggleTheme, toolsEnabled, dropogramEnabled }}>
             {children}
         </ThemeContext.Provider>
     );

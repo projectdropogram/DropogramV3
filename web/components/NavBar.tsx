@@ -5,19 +5,15 @@ import { useTheme } from './ThemeProvider';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/utils/supabase/client';
 import { useEffect, useState } from 'react';
-import { Menu, X } from 'lucide-react';
-
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { Menu, X, Wrench, Package } from 'lucide-react';
 
 export function NavBar() {
     const pathname = usePathname();
     const isProducer = pathname?.includes('/producer');
-    const { theme } = useTheme();
+    const isTools = pathname?.startsWith('/tools');
+    const { theme, toolsEnabled, dropogramEnabled } = useTheme();
     const [isAdmin, setIsAdmin] = useState(false);
     const [session, setSession] = useState<any>(null);
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -57,7 +53,7 @@ export function NavBar() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between h-16 items-center">
                     <div className="flex items-center">
-                        <Link href="/consumer">
+                        <Link href={dropogramEnabled ? '/consumer' : '/tools'}>
                             <LogoText theme={theme} />
                         </Link>
                     </div>
@@ -65,16 +61,34 @@ export function NavBar() {
                     {/* Desktop Navigation */}
                     <div className="hidden md:flex items-center space-x-6">
                         <div className="flex items-center space-x-1 bg-gray-100/50 p-1 rounded-xl backdrop-blur-sm">
-                            <Link href="/producer">
-                                <span className={`px-5 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer inline-block ${isProducer ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}>
-                                    Drop Studio
-                                </span>
-                            </Link>
-                            <Link href="/consumer">
-                                <span className={`px-5 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer inline-block ${!isProducer ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}>
-                                    Consumer
-                                </span>
-                            </Link>
+                            {dropogramEnabled && (
+                                <>
+                                    <Link href="/producer">
+                                        <span className={`px-5 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer inline-block ${isProducer ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}>
+                                            Drop Studio
+                                        </span>
+                                    </Link>
+                                    <Link href="/consumer">
+                                        <span className={`px-5 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer inline-block ${!isProducer && !isTools ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}>
+                                            Shop
+                                        </span>
+                                    </Link>
+                                </>
+                            )}
+                            {toolsEnabled && (
+                                <>
+                                    <Link href="/tools/dashboard">
+                                        <span className={`px-5 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer inline-flex items-center gap-1.5 ${isTools && pathname?.includes('/dashboard') ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}>
+                                            <Wrench className="h-3.5 w-3.5" /> Lend
+                                        </span>
+                                    </Link>
+                                    <Link href="/tools/search">
+                                        <span className={`px-5 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer inline-flex items-center gap-1.5 ${isTools && !pathname?.includes('/dashboard') ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}>
+                                            <Package className="h-3.5 w-3.5" /> Rent
+                                        </span>
+                                    </Link>
+                                </>
+                            )}
                         </div>
 
                         {session ? (
@@ -86,11 +100,20 @@ export function NavBar() {
                                         </span>
                                     </Link>
                                 )}
-                                <Link href="/orders">
-                                    <span className="text-sm font-bold text-gray-600 hover:text-primary transition-colors cursor-pointer">
-                                        Orders
-                                    </span>
-                                </Link>
+                                {dropogramEnabled && (
+                                    <Link href="/orders">
+                                        <span className="text-sm font-bold text-gray-600 hover:text-primary transition-colors cursor-pointer">
+                                            Orders
+                                        </span>
+                                    </Link>
+                                )}
+                                {toolsEnabled && (
+                                    <Link href="/tools/rentals">
+                                        <span className="text-sm font-bold text-gray-600 hover:text-primary transition-colors cursor-pointer">
+                                            My Rentals
+                                        </span>
+                                    </Link>
+                                )}
                                 <Link href="/profile">
                                     <div className="h-10 w-10 rounded-full bg-gray-200 overflow-hidden border-2 border-white shadow-sm cursor-pointer hover:ring-2 hover:ring-primary transition-all">
                                         {avatarUrl ? (
@@ -141,16 +164,34 @@ export function NavBar() {
             {isMobileMenuOpen && (
                 <div className="md:hidden border-t border-gray-100 p-4 space-y-4 animate-in slide-in-from-top-5 fade-in duration-200">
                     <div className="flex flex-col space-y-2 bg-gray-50 p-2 rounded-xl">
-                        <Link href="/producer" onClick={() => setIsMobileMenuOpen(false)}>
-                            <span className={`block px-4 py-3 rounded-lg text-sm font-bold transition-all cursor-pointer text-center ${isProducer ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}>
-                                Drop Studio
-                            </span>
-                        </Link>
-                        <Link href="/consumer" onClick={() => setIsMobileMenuOpen(false)}>
-                            <span className={`block px-4 py-3 rounded-lg text-sm font-bold transition-all cursor-pointer text-center ${!isProducer ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}>
-                                Consumer
-                            </span>
-                        </Link>
+                        {dropogramEnabled && (
+                            <>
+                                <Link href="/producer" onClick={() => setIsMobileMenuOpen(false)}>
+                                    <span className={`block px-4 py-3 rounded-lg text-sm font-bold transition-all cursor-pointer text-center ${isProducer ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}>
+                                        Drop Studio
+                                    </span>
+                                </Link>
+                                <Link href="/consumer" onClick={() => setIsMobileMenuOpen(false)}>
+                                    <span className={`block px-4 py-3 rounded-lg text-sm font-bold transition-all cursor-pointer text-center ${!isProducer && !isTools ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}>
+                                        Shop
+                                    </span>
+                                </Link>
+                            </>
+                        )}
+                        {toolsEnabled && (
+                            <>
+                                <Link href="/tools/dashboard" onClick={() => setIsMobileMenuOpen(false)}>
+                                    <span className={`flex items-center justify-center gap-1.5 px-4 py-3 rounded-lg text-sm font-bold transition-all cursor-pointer ${isTools && pathname?.includes('/dashboard') ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}>
+                                        <Wrench className="h-3.5 w-3.5" /> Lend Tools
+                                    </span>
+                                </Link>
+                                <Link href="/tools/search" onClick={() => setIsMobileMenuOpen(false)}>
+                                    <span className={`flex items-center justify-center gap-1.5 px-4 py-3 rounded-lg text-sm font-bold transition-all cursor-pointer ${isTools && !pathname?.includes('/dashboard') ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}>
+                                        <Package className="h-3.5 w-3.5" /> Rent Tools
+                                    </span>
+                                </Link>
+                            </>
+                        )}
                     </div>
 
                     {session ? (
@@ -162,11 +203,20 @@ export function NavBar() {
                                     </span>
                                 </Link>
                             )}
-                            <Link href="/orders" onClick={() => setIsMobileMenuOpen(false)}>
-                                <span className="block w-full text-center px-4 py-3 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-100 transition-colors">
-                                    My Orders
-                                </span>
-                            </Link>
+                            {dropogramEnabled && (
+                                <Link href="/orders" onClick={() => setIsMobileMenuOpen(false)}>
+                                    <span className="block w-full text-center px-4 py-3 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-100 transition-colors">
+                                        My Orders
+                                    </span>
+                                </Link>
+                            )}
+                            {toolsEnabled && (
+                                <Link href="/tools/rentals" onClick={() => setIsMobileMenuOpen(false)}>
+                                    <span className="block w-full text-center px-4 py-3 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-100 transition-colors">
+                                        My Rentals
+                                    </span>
+                                </Link>
+                            )}
                         </div>
                     ) : (
                         <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>
